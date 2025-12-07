@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Stok & Laba</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    
+    <style>
+        body { background-color: #f8f9fa; padding-top: 20px; padding-bottom: 50px; }
+        .card { box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: none; }
+        .col-stok { width: 150px; min-width: 150px; text-align: center; }
+        .table-action { width: 120px; text-align: center; }
+        
+        .btn-stok {
+            width: 28px; height: 28px; padding: 0;
+            line-height: 1; border-radius: 50%; font-weight: bold;
+        }
+        
+        .text-profit { color: #198754; font-weight: 600; }
+        .bg-gradient-primary { background: linear-gradient(45deg, #0d6efd, #0a58ca); color: white; }
+        .bg-gradient-success { background: linear-gradient(45deg, #198754, #157347); color: white; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 class="text-center mb-4 fw-bold text-primary"> Manajemen Stok Produk</h2>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card bg-gradient-primary p-3 mb-2">
+                <h5>Total Modal Tertanam</h5>
+                <h2 id="totalModal">Rp 0</h2>
+                <small>Total uang yang Anda keluarkan untuk stok saat ini.</small>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card bg-gradient-success p-3 mb-2">
+                <h5>Potensi Keuntungan</h5>
+                <h2 id="totalProfit">Rp 0</h2>
+                <small>Estimasi laba kotor jika semua stok terjual.</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card p-4 mb-3">
+                <h5 id="formTitle" class="mb-3"><i class="bi bi-box-seam"></i> Tambah Produk</h5>
+                <form id="formProduk">
+                    <input type="hidden" id="indexEdit" value="">
+
+                    <div class="mb-3">
+                        <label class="form-label">Nama Produk</label>
+                        <input type="text" class="form-control" id="namaProduk" placeholder="Contoh: Kopi Sachet" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Stok Awal</label>
+                        <input type="number" class="form-control" id="stokProduk" placeholder="0" required>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label class="form-label text-secondary">Harga Modal</label>
+                                <input type="number" class="form-control" id="modalProduk" placeholder="Beli" required>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label class="form-label text-primary fw-bold">Harga Jual</label>
+                                <input type="number" class="form-control" id="hargaProduk" placeholder="Jual" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100 mb-2" id="btnSimpan">Simpan Produk</button>
+                    <button type="button" class="btn btn-secondary w-100" id="btnBatal" style="display:none;">Batal</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card p-3">
+                <h5 class="mb-3"><i class="bi bi-table"></i> Daftar Inventaris</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle" style="font-size: 0.95rem;">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Produk</th>
+                                <th>Keuangan (per unit)</th>
+                                <th class="col-stok">Stok</th>
+                                <th class="table-action">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelBody">
+                            </tbody>
+                    </table>
+                    <p id="pesanKosong" class="text-center text-muted fst-italic mt-4" style="display:none;">
+                        Belum ada data. Silakan tambah produk.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+    $(document).ready(function() {
+       
+        const formatRp = (num) => "Rp " + parseInt(num).toLocaleString('id-ID');
+
+        function tampilkanData() {
+            var produkList = JSON.parse(localStorage.getItem('produkDB')) || [];
+            var tabelBody = $('#tabelBody');
+            
+            var totalModalSemua = 0;
+            var totalProfitSemua = 0;
+
+            tabelBody.empty();
+
+            if (produkList.length === 0) {
+                $('#pesanKosong').show();
+            } else {
+                $('#pesanKosong').hide();
+                
+                $.each(produkList, function(index, item) {
+                    var modal = parseInt(item.modal) || 0;
+                    var harga = parseInt(item.harga) || 0;
+                    var stok = parseInt(item.stok) || 0;
+                    
+                    var profitPerUnit = harga - modal;
+                    
+                    totalModalSemua += (modal * stok);
+                    totalProfitSemua += (profitPerUnit * stok);
+
+                    var badgeClass = stok === 0 ? 'bg-danger' : (stok < 5 ? 'bg-warning text-dark' : 'bg-success');
+                    
+                    var profitClass = profitPerUnit >= 0 ? 'text-success' : 'text-danger';
+
+                    var baris = `
+                        <tr>
+                            <td>
+                                <span class="fw-bold">${item.nama}</span>
+                            </td>
+                            <td>
+                                <small class="text-muted d-block">Beli: ${formatRp(modal)}</small>
+                                <span class="fw-bold text-primary">Jual: ${formatRp(harga)}</span><br>
+                                <small class="${profitClass} fw-bold">Laba: ${formatRp(profitPerUnit)}</small>
+                            </td>
+                            <td class="text-center">
+                                <div class="d-flex justify-content-center align-items-center gap-2">
+                                    <button class="btn btn-outline-danger btn-stok btn-kurang" data-id="${index}"><i class="bi bi-dash"></i></button>
+                                    <span class="badge ${badgeClass}" style="min-width:40px;">${stok}</span>
+                                    <button class="btn btn-outline-success btn-stok btn-tambah" data-id="${index}"><i class="bi bi-plus"></i></button>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <button class="btn btn-light btn-sm btn-edit text-primary" data-id="${index}"><i class="bi bi-pencil-square"></i></button>
+                                <button class="btn btn-light btn-sm btn-hapus text-danger" data-id="${index}"><i class="bi bi-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                    tabelBody.append(baris);
+                });
+            }
+
+            $('#totalModal').text(formatRp(totalModalSemua));
+            $('#totalProfit').text(formatRp(totalProfitSemua));
+        }
+
+        function resetForm() {
+            $('#indexEdit').val('');
+            $('#formProduk')[0].reset(); 
+            $('#formTitle').html('<i class="bi bi-box-seam"></i> Tambah Produk');
+            $('#btnSimpan').text('Simpan Produk').removeClass('btn-success').addClass('btn-primary');
+            $('#btnBatal').hide();
+        }
+
+        $('#formProduk').on('submit', function(e) {
+            e.preventDefault();
+
+            var produkBaru = {
+                nama: $('#namaProduk').val(),
+                modal: $('#modalProduk').val(), 
+                harga: $('#hargaProduk').val(),
+                stok: $('#stokProduk').val()
+            };
+
+            var indexEdit = $('#indexEdit').val();
+            var produkList = JSON.parse(localStorage.getItem('produkDB')) || [];
+
+            if (indexEdit === '') {
+                produkList.push(produkBaru);
+            } else {
+                produkList[indexEdit] = produkBaru;
+            }
+
+            localStorage.setItem('produkDB', JSON.stringify(produkList));
+            resetForm();
+            tampilkanData();
+        });
+
+        $('#tabelBody').on('click', '.btn-edit', function() {
+            var index = $(this).data('id');
+            var produkList = JSON.parse(localStorage.getItem('produkDB')) || [];
+            var data = produkList[index];
+
+            $('#indexEdit').val(index);
+            $('#namaProduk').val(data.nama);
+            $('#stokProduk').val(data.stok);
+            $('#modalProduk').val(data.modal); 
+            $('#hargaProduk').val(data.harga);
+
+            $('#formTitle').html('<i class="bi bi-pencil-square"></i> Edit Produk');
+            $('#btnSimpan').text('Update Data').removeClass('btn-primary').addClass('btn-success');
+            $('#btnBatal').show();
+        });
+
+        $('#btnBatal').on('click', resetForm);
+
+        $('#tabelBody').on('click', '.btn-hapus', function() {
+            if(confirm('Hapus produk ini?')) {
+                var index = $(this).data('id');
+                var list = JSON.parse(localStorage.getItem('produkDB')) || [];
+                list.splice(index, 1);
+                localStorage.setItem('produkDB', JSON.stringify(list));
+                tampilkanData();
+            }
+        });
+
+        $('#tabelBody').on('click', '.btn-tambah', function() {
+            var idx = $(this).data('id');
+            var list = JSON.parse(localStorage.getItem('produkDB'));
+            list[idx].stok = parseInt(list[idx].stok) + 1;
+            localStorage.setItem('produkDB', JSON.stringify(list));
+            tampilkanData();
+        });
+
+        $('#tabelBody').on('click', '.btn-kurang', function() {
+            var idx = $(this).data('id');
+            var list = JSON.parse(localStorage.getItem('produkDB'));
+            if (list[idx].stok > 0) {
+                list[idx].stok = parseInt(list[idx].stok) - 1;
+                localStorage.setItem('produkDB', JSON.stringify(list));
+                tampilkanData();
+            }
+        });
+
+        tampilkanData();
+    });
+</script>
+
+</body>
+</html>
